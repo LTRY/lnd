@@ -291,13 +291,8 @@ static void wait_and_check_bitcoind(struct plugin *p)
 {
 	int from;
 	pid_t child;
-	plugin_log(p, LOG_INFORM, "Trying HERE");
 	const char **cmd = gather_args(bitcoind, "getnetworkinfo", NULL);
 	char *output = NULL;
-	plugin_log(p, LOG_INFORM, "Trying something");
-	plugin_log(p, LOG_INFORM, "using this cmd: %s", args_string(cmd, cmd));
-
-	tal_free(output);
 
 	child = pipecmdarr(NULL, &from, &from, cast_const2(char **,cmd));
 	if (child < 0) {
@@ -344,13 +339,8 @@ static void wait_and_check_bitcoind(struct plugin *p)
 {
 	int from;
 	pid_t child;
-	plugin_log(p, LOG_INFORM, "Trying HERE");
 	const char **cmd = gather_args(bitcoind, "getnetworkinfo", NULL);
 	char *output = NULL;
-	plugin_log(p, LOG_INFORM, "Trying something");
-	plugin_log(p, LOG_INFORM, "using this cmd: %s", args_string(cmd, cmd));
-
-	tal_free(output);
 
 	child = pipecmdarr(NULL, &from, &from, cast_const2(char **,cmd));
 	if (child < 0) {
