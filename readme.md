@@ -252,6 +252,40 @@ Maintentant, si l'on essaye de la même commande avec l'argument -rpcwait en plu
 ```
 On n'obtient rien, la commande ne retourne aucun status et n'exit pas. Maintenant, on peut remplacer cette commande par celle qui est utilisé dans la fonction et ainsi remplacer une grande partie de la logique mis en place. On garde garde donc la logique qui nous permet de dire si bitcoinc-cli est accessible et on le laisse effectue la commande et on attend que celui-ci réponde. Lorsque l'on obitent l'output, on le parse avec la fonction `parse_getnetworkinfo_result` pour s'assurer de la bonne santé de bitcoin-cli et on laisse ensuite le code se dérouler.
 
+On rajoute l'argument `-rpcwait` dans la fonction gather_args:
+```c
+static const char **gather_args(const tal_t *ctx, const char *cmd, const char **cmd_args)
+{
+	const char **args = tal_arr(ctx, const char *, 1);
+
+	args[0] = bitcoind->cli ? bitcoind->cli : chainparams->cli;
+	if (chainparams->cli_args)
+		add_arg(&args, chainparams->cli_args);
+	if (bitcoind->datadir)
+		add_arg(&args, tal_fmt(args, "-datadir=%s", bitcoind->datadir));
+	if (bitcoind->rpcconnect)
+		add_arg(&args,
+			tal_fmt(args, "-rpcconnect=%s", bitcoind->rpcconnect));
+	if (bitcoind->rpcport)
+		add_arg(&args,
+			tal_fmt(args, "-rpcport=%s", bitcoind->rpcport));
+	if (bitcoind->rpcuser)
+		add_arg(&args, tal_fmt(args, "-rpcuser=%s", bitcoind->rpcuser));
+	if (bitcoind->rpcpass)
+		add_arg(&args,
+			tal_fmt(args, "-rpcpassword=%s", bitcoind->rpcpass));
+	
+	add_arg(&args, "-rpcwait"); // <- ici
+	add_arg(&args, cmd);
+	for (size_t i = 0; i < tal_count(cmd_args); i++)
+		add_arg(&args, cmd_args[i]);
+	add_arg(&args, NULL);
+
+	return args;
+}
+```
+*Oui, il y a certainement une facon plus élégante de faire. Mais il semble compliquer d'implémenter l'argument dans la logique de la variable `ctx` et la variable `cmd_args` rassemble les arguments qui seront placer derrière la méthode appellé (pour nous `getnetworkinfo`) et notre argument n'aura alors aucun effet.*
+
 ```c
 static void wait_and_check_bitcoind(struct plugin *p)
 {
@@ -301,6 +335,50 @@ You can verify that your Bitcoin Core installation is ready for use by running:
 The Bitcoin backend died.
 ```
 - si bitcoin-cli est accessible, mais que bitcoind n'est pas prêt à recevoir des requêtes RPC, on attend simplement.
+
+## Désavantages de cette solution
+On essayé de profiter au maximum de ce que pouvait nous offir l'argument `-rpcwait`: Le problème avec cette solution c'est que l'on ne voit pas de log s'afficher, puisque la logique du warm up est délégué à bitcoin-cli. Ce que l'on pourrait faire c'est rajouter du code qui nous permet de comprendre si bitcoind est actif:
+
+```c
+static void wait_and_check_bitcoind(struct plugin *p)
+{
+	int from;
+	pid_t child;
+	plugin_log(p, LOG_INFORM, "Trying HERE");
+	const char **cmd = gather_args(bitcoind, "getnetworkinfo", NULL);
+	char *output = NULL;
+	plugin_log(p, LOG_INFORM, "Trying something");
+	plugin_log(p, LOG_INFORM, "using this cmd: %s", args_string(cmd, cmd));
+
+	tal_free(output);
+
+	child = pipecmdarr(NULL, &from, &from, cast_const2(char **,cmd));
+	if (child < 0) {
+		if (errno == ENOENT)
+			bitcoind_failure(p, "bitcoin-cli not found. Is bitcoin-cli "
+					    "(part of Bitcoin Core) available in your PATH?");
+		plugin_err(p, "%s exec failed: %s", cmd[0], strerror(errno));
+	}
+
+	output = grab_fd(cmd, from);
+	while ((ret = waitpid(child, &status, 0)) < 0 && errno == EINTR);
+	if (WEXITSTATUS(status) == 1)
+				bitcoind_failure(p, "Could not connect to bitcoind using"
+						    " bitcoin-cli. Is bitcoind running?");
+			bitcoind_failure(p, tal_fmt(bitcoind, "%s exited with code %i: %s",
+						    cmd[0], WEXITSTATUS(status), output));
+	
+	parse_getnetworkinfo_result(p, output);
+
+	tal_free(output);
+	tal_free(cmd);
+}
+```
+Seulement si l'on fait ca, au final, on ne retire que peu de code, il y a donc un tradeoff entre avoir un code plus simple mais moins maitriser le status du process bitcoind, ou alors garder une logique un peu verbeuse et être capable de maitriser le status de bitcoind 
+
+Lien du fork: [ici](https://github.com/LTRY/lightning/blob/master)
+Lien du fichier bcli.c du fork [ici](https://github.com/LTRY/lightning/blob/master/plugins/bcli.c)
+
 
 `SOURCE`:
 
