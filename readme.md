@@ -1,4 +1,16 @@
-## cleanup: Use the `-rpcwait` when waiting for bitcoind to warm up *#3505*
+# Lightning Network
+
+## Résolution d'une `first good issue`
+
+### IF-4
+**Henri Marteville  
+Antoine Thibault  
+Louis Tiercery**
+
+---
+
+## cleanup: Use the -rpcwait when waiting for bitcoind to warm up #3505
+https://github.com/ElementsProject/lightning/issues/3505
 
 We currently use a rather lengthy loop to wait for bitcoind to warm up and be ready to serve RPC calls:
 
@@ -47,7 +59,9 @@ for (;;) {
 
 This could be simplified if we just call bitcoin-cli with -rpcwait which implements the wait logic internally and allows us to skip checking the returned error (if we get an error it's not the warmup error so we can pass any error up regardless). The downside is that it doesn't allow us to print the warmup ourselves, but we could easily replace that with a single one-shot timer printing the message.
 
-## Etape 0: Fonction entiere:
+---
+
+## Etape 0: Description de la fonction impliqué
 *Le but de cette fonction de s'assurer que bitcoind est disponible et qu'il est en mesure de recevoir des requêtes RPC de bitcoin-cli. Pour ce faire, la fonction essaye d'exécuter la commande `bitcoin-cli [args] getnetworkinfo`. Si le retour de cette commande est bien une variable json que l'on peut parser, alors on est assurer que bitcoind est prêt pour la suite de lightning.*
 ```c
 static void wait_and_check_bitcoind(struct plugin *p)
@@ -107,7 +121,7 @@ static void wait_and_check_bitcoind(struct plugin *p)
 }
 ```
 
-## 1 ere étape: trigger les erreurs que le code fait ressortir
+## Etape 1: trigger les erreurs que le code est capable de détecter
 
 
 ```c
@@ -121,7 +135,7 @@ child = pipecmdarr(NULL, &from, &from, cast_const2(char **,cmd)); // run a comma
 ```
 Ce morceau de code execute la commande constitué à partir des arguments rassemblés par cette instruction: `const char **cmd = gather_args(bitcoind, "getnetworkinfo", NULL);`
 
-Dans une machine virtuelle, on installe ubuntu et on installe seulement lightning
+Dans un conteneur docker ubuntu, on install seulement lightning (sans 
 ```
 docker run -ti ubuntu
 apt-get update
