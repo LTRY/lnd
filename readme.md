@@ -370,7 +370,7 @@ static void wait_and_check_bitcoind(struct plugin *p)
 ```
 Seulement si l'on fait ca, au final, on ne retire que peu de code, il y a donc un tradeoff entre avoir un code plus simple mais moins maitriser le status du process bitcoind, ou alors garder une logique un peu verbeuse et être capable de maitriser le status de bitcoind.
 
-Lien du fork: [ici](https://github.com/LTRY/lightning/blob/master)
+Lien du fork: [ici](https://github.com/LTRY/lightning)
 Lien du fichier bcli.c du fork [ici](https://github.com/LTRY/lightning/blob/master/plugins/bcli.c)
 
 
