@@ -172,7 +172,11 @@ while ((ret = waitpid(child, &status, 0)) < 0 && errno == EINTR);
 			bitcoind_failure(p, tal_fmt(bitcoind, "Death of %s: signal %i",
 						   cmd[0], WTERMSIG(status)));
 ```         
-Ce morceau de code nous indique si le process de bitcoin-cli est accessible
+Ce morceau de code nous indique si le process de bitcoin-cli est accessible. 
+Dans un premier temps, si  ret = waitpid < 0 (waitpid est un appel qui suspend l'exécution du processus appelant jusqu'à ce qu'un  fils spécifié  par  l'argument  pid  change d'état) et errno == EINTR (EINTR si un signal s'est produit pendant que l'appel système était en cours), alors : 
+	- si ret n'est pas egal à child, comme la variable child a été initialisée en faisant appel à pipecmdarr alors cela veut dire que le processus bitcoind n'a pas encore changé d'état et que donc il est en train de se lancer. Le programme renvoie bitcoind_failure qui précise que lnd attend que bitcoind se lance. 
+	- si bitcoind ne renvoie pas WIFEXITED(status) (qui renvoie true si le fils s'est terminé correctement, c'est à dire par un appel à exit() __exit() ou un retour de main()) cela signifie que le signal est mort et donc le programme renvoie bitcoind_failure et précise que le signal bitcoind est mort. 
+Si rien de cela n'est arrivé, alors quand bitcoind sera demarré il changera d'état, waitpid deviendrea > 0 et le programme peux continuer. 
 
 ---
 
