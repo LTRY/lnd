@@ -61,8 +61,8 @@ This could be simplified if we just call bitcoin-cli with -rpcwait which impleme
 
 ---
 
-## Etape 0: Description de la fonction impliqué
-*Le but de cette fonction de s'assurer que bitcoind est disponible et qu'il est en mesure de recevoir des requêtes RPC de bitcoin-cli. Pour ce faire, la fonction essaye d'exécuter la commande `bitcoin-cli [args] getnetworkinfo`. Si le retour de cette commande est bien une variable json que l'on peut parser, alors on est assurer que bitcoind est prêt pour la suite de lightning.*
+## Etape 0: Description de la fonction impliquée
+*Le but de cette fonction de s'assurer que bitcoind est disponible et qu'il est en mesure de recevoir des requêtes RPC de bitcoin-cli. Pour ce faire, la fonction essaye d'exécuter la commande `bitcoin-cli [args] getnetworkinfo`. Si le retour de cette commande est bien une variable json que l'on peut parser, alors on est assuré que bitcoind est prêt pour la suite de lightning.*
 ```c
 static void wait_and_check_bitcoind(struct plugin *p)
 {
@@ -133,9 +133,9 @@ child = pipecmdarr(NULL, &from, &from, cast_const2(char **,cmd)); // run a comma
  			plugin_err(p, "%s exec failed: %s", cmd[0], strerror(errno)); 
  		}
 ```
-Ce morceau de code execute la commande constitué à partir des arguments rassemblés par cette instruction: `const char **cmd = gather_args(bitcoind, "getnetworkinfo", NULL);`
+Ce morceau de code exécute la commande constituée à partir des arguments rassemblés par cette instruction: `const char **cmd = gather_args(bitcoind, "getnetworkinfo", NULL);`
 
-Dans un conteneur docker ubuntu, on install seulement lightning (sans 
+Dans un conteneur docker ubuntu, on install seulement lightning (sans bitcoind).
 ```
 docker run -ti ubuntu
 apt-get update
@@ -173,10 +173,10 @@ while ((ret = waitpid(child, &status, 0)) < 0 && errno == EINTR);
 						   cmd[0], WTERMSIG(status)));
 ```         
 Ce morceau de code nous indique si le process de bitcoin-cli est accessible. 
-Dans un premier temps, si  ret = waitpid < 0 (waitpid est un appel qui suspend l'exécution du processus appelant jusqu'à ce qu'un  fils spécifié  par  l'argument  pid  change d'état) et errno == EINTR (EINTR si un signal s'est produit pendant que l'appel système était en cours), alors : 
-	- si ret n'est pas egal à child, comme la variable child a été initialisée en faisant appel à pipecmdarr alors cela veut dire que le processus bitcoind n'a pas encore changé d'état et que donc il est en train de se lancer. Le programme renvoie bitcoind_failure qui précise que lnd attend que bitcoind se lance. 
-	- si bitcoind ne renvoie pas WIFEXITED(status) (qui renvoie true si le fils s'est terminé correctement, c'est à dire par un appel à exit() __exit() ou un retour de main()) cela signifie que le signal est mort et donc le programme renvoie bitcoind_failure et précise que le signal bitcoind est mort. 
-Si rien de cela n'est arrivé, alors quand bitcoind sera demarré il changera d'état, waitpid deviendrea > 0 et le programme peux continuer. 
+Dans un premier temps, si  ret = waitpid < 0 (waitpid est un appel qui suspend l'exécution du processus appelant jusqu'à ce qu'un  fils spécifié  par  l'argument  pid  change d'état) et errno == EINTR (EINTR si un signal s'est produit pendant que l'appel système était en cours), alors :  
+- si ret n'est pas egal à child, comme la variable child a été initialisée en faisant appel à pipecmdarr alors cela veut dire que le processus bitcoind n'a pas encore changé d'état et que donc il est en train de se lancer. Le programme renvoie bitcoind_failure qui précise que lnd attend que bitcoind se lance.  
+- si bitcoind ne renvoie pas WIFEXITED(status) (qui renvoie true si le fils s'est terminé correctement, c'est à dire par un appel à exit() __exit() ou un retour de main()) cela signifie que le signal est mort et donc le programme renvoie bitcoind_failure et précise que le signal bitcoind est mort.  
+Si rien de cela n'est arrivé, alors quand bitcoind sera demarré il changera d'état, waitpid deviendrea > 0 et le programme peut continuer. 
 
 ---
 
@@ -203,7 +203,7 @@ if (WEXITSTATUS(status) != 28) {
 			printed = true;
 		}
 ```
-Ce morceau de code est interressant car c'est la que vient l'intérêt de la boucle. En effet, le process bitcoind peut être actif et pourtant ne pas être capable de recevoir des requêtes. Cette phase dure assez longtemps et se débloque en même temps que bitcoind commence à télécharger des blocs. Ce que cela veut aussi dire, c'est que le process de bitcoin-cli peut être actif et pourtant ne pas être en mesure de faire la commande car bitcoind est toujours en train de warm up. Le status de bitcoin-cli est arbitrairement 28.  
+Ce morceau de code est intérressant car c'est là que vient l'intérêt de la boucle. En effet, le process bitcoind peut être actif et pourtant ne pas être capable de recevoir des requêtes. Cette phase dure assez longtemps et se débloque en même temps que bitcoind commence à télécharger des blocs. Ce que cela veut aussi dire, c'est que le process de bitcoin-cli peut être actif et pourtant ne pas être en mesure de faire la commande car bitcoind est toujours en train de warm up. Le status de bitcoin-cli est arbitrairement 28.  
 Donc tant que bitcoin-cli nous retourne un status et que celui-ci est 28, on continue la boucle jusqu'à ce qu'on tombe sur le status 0 présenté précdemment qui indique un fonctionnement normal.
 Si le status est différent de 28, on regarde les autres valeurs qui peuvent inquider un mauvais fonctionnement. Pour ce qui est de simplement attendre que bitcoind soit prêt à recevoir des requêtes RPC, seul le status 1 est révélateur d'une impossibilité de dialogue entre bitcoin-cli et bitcoind. Cela peut simplement vouloir dire que le process de bitcoind n'est pas actif. On le verifira par l'exemple juste après.
 
@@ -240,7 +240,7 @@ Si les exécutables bitcoind et bitcoin-cli sont disponible, mais que le process
 
 ## 2 eme étape: implémenter -rpcwait
 
-En effet, si on essaye d'executer la commande suivante, on obtient l'erreur qui suit:
+En effet, si on essaye d'exécuter la commande suivante, on obtient l'erreur qui suit:
 ```shell script
 ~ bitcoin-cli -testnet -datadir=/Volumes/ETH/bitcoin getnetworkinfo 
 error: Could not connect to the server 127.0.0.1:8332
@@ -254,7 +254,7 @@ Maintentant, si l'on essaye de la même commande avec l'argument -rpcwait en plu
 ```
  ~ bitcoin-cli -testnet -datadir=/Volumes/ETH/bitcoin -rpcwait getnetworkinfo
 ```
-On n'obtient rien, la commande ne retourne aucun status et n'exit pas. Maintenant, on peut remplacer cette commande par celle qui est utilisé dans la fonction et ainsi remplacer une grande partie de la logique mis en place. On garde garde donc la logique qui nous permet de dire si bitcoinc-cli est accessible et on le laisse effectue la commande et on attend que celui-ci réponde. Lorsque l'on obitent l'output, on le parse avec la fonction `parse_getnetworkinfo_result` pour s'assurer de la bonne santé de bitcoin-cli et on laisse ensuite le code se dérouler.
+On n'obtient rien, la commande ne retourne aucun status et n'exit pas. Maintenant, on peut remplacer cette commande par celle qui est utilisée dans la fonction et ainsi remplacer une grande partie de la logique mise en place. On garde donc la logique qui nous permet de dire si bitcoinc-cli est accessible, on le laisse effectuer la commande et on attend que celui-ci réponde. Lorsque l'on obtient l'output, on le parse avec la fonction `parse_getnetworkinfo_result` pour s'assurer de la bonne santé de bitcoin-cli et on laisse ensuite le code se dérouler.
 
 On rajoute l'argument `-rpcwait` dans la fonction gather_args:
 ```c
@@ -288,7 +288,7 @@ static const char **gather_args(const tal_t *ctx, const char *cmd, const char **
 	return args;
 }
 ```
-*Oui, il y a certainement une facon plus élégante de faire. Mais il semble compliquer d'implémenter l'argument dans la logique de la variable `ctx` et la variable `cmd_args` rassemble les arguments qui seront placer derrière la méthode appellé (pour nous `getnetworkinfo`) et notre argument n'aura alors aucun effet.*
+*Oui, il y a certainement une facon plus élégante de faire. Mais il semble compliqué d'implémenter l'argument dans la logique de la variable `ctx` et la variable `cmd_args` rassemble les arguments qui seront placés derrière la méthode appellée (pour nous `getnetworkinfo`) et notre argument n'aura alors aucun effet.*
 
 ```c
 static void wait_and_check_bitcoind(struct plugin *p)
@@ -336,7 +336,7 @@ The Bitcoin backend died.
 - si bitcoin-cli est accessible, mais que bitcoind n'est pas prêt à recevoir des requêtes RPC, on attend simplement.
 
 ## Désavantages de cette solution
-On essayé de profiter au maximum de ce que pouvait nous offir l'argument `-rpcwait`: Le problème avec cette solution c'est que l'on ne voit pas de log s'afficher, puisque la logique du warm up est délégué à bitcoin-cli. Ce que l'on pourrait faire c'est rajouter du code qui nous permet de comprendre si bitcoind est actif:
+On a essayé de profiter au maximum de ce que pouvait nous offir l'argument `-rpcwait`: Le problème avec cette solution c'est que l'on ne voit pas de log s'afficher, puisque la logique du warm up est délégué à bitcoin-cli. Ce que l'on pourrait faire c'est rajouter du code qui nous permet de comprendre si bitcoind est actif:
 
 ```c
 static void wait_and_check_bitcoind(struct plugin *p)
@@ -368,7 +368,7 @@ static void wait_and_check_bitcoind(struct plugin *p)
 	tal_free(cmd);
 }
 ```
-Seulement si l'on fait ca, au final, on ne retire que peu de code, il y a donc un tradeoff entre avoir un code plus simple mais moins maitriser le status du process bitcoind, ou alors garder une logique un peu verbeuse et être capable de maitriser le status de bitcoind 
+Seulement si l'on fait ca, au final, on ne retire que peu de code, il y a donc un tradeoff entre avoir un code plus simple mais moins maitriser le status du process bitcoind, ou alors garder une logique un peu verbeuse et être capable de maitriser le status de bitcoind.
 
 Lien du fork: [ici](https://github.com/LTRY/lightning/blob/master)
 Lien du fichier bcli.c du fork [ici](https://github.com/LTRY/lightning/blob/master/plugins/bcli.c)
